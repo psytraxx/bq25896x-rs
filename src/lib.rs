@@ -1,3 +1,10 @@
+//! BQ25896 Battery Charging and Power Path Management Library
+//!
+//! This library provides an interface to the BQ25896 IC for battery charging
+//! and power path management. It includes functions for configuring and
+//! monitoring the charging process.
+
+/// BQ25896 battery charging and power path management IC driver.
 pub mod bq25896;
 
 #[cfg(test)]

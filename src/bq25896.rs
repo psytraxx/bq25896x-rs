@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Formatter};
 use embedded_hal::i2c::I2c;
 use libm::{log, round};
-/// https://github.com/Xinyuan-LilyGO/LilyGo-AMOLED-Series/blob/master/libdeps/XPowersLib/src/PowersBQ25896.tpp
+/// <https://github.com/Xinyuan-LilyGO/LilyGo-AMOLED-Series/blob/master/libdeps/XPowersLib/src/PowersBQ25896.tpp>
 ///
 /// BQ25896 battery charging and power path management IC driver.
 /// Provides battery charging control, system power path management,
@@ -88,6 +88,10 @@ where
         Ok(instance)
     }
 
+    /// Detects the PMU
+    ///
+    /// # Arguments
+    /// * `adr` - I2C device address
     fn detect_pmu(&mut self, adr: u8) -> Result<(), PmuSensorError> {
         if self.dev.write_register(&[adr]).is_ok() {
             Ok(())
@@ -99,30 +103,40 @@ where
     // Register 0x00
     // Enable HIZ Mode, Enable ILIM Pin, Input Current Limit
 
+    /// Enables HIZ mode
     pub fn set_hiz_mode(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x00, 7)
     }
 
+    /// Exits HIZ mode
     pub fn exit_hiz_mode(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x00, 7)
     }
 
+    /// Checks if HIZ mode is enabled
     pub fn is_hiz_mode(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x00, 7)
     }
 
+    /// Enables the current limit pin
     pub fn enable_current_limit_pin(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x00, 6)
     }
 
+    /// Disables the current limit pin
     pub fn disable_current_limit_pin(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x00, 6)
     }
 
+    /// Checks if the current limit pin is enabled
     pub fn is_enable_current_limit_pin(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x00, 6)
     }
 
+    /// Sets the input current limit
+    ///
+    /// # Arguments
+    /// * `milliampere` - Current limit in mA
     pub fn set_input_current_limit(&mut self, milliampere: u16) -> Result<(), PmuSensorError> {
         // Validate input is multiple of step size
         if milliampere % IN_CURRENT_STEP != 0 {
@@ -148,6 +162,7 @@ where
         self.dev.write_register(&[0x00, reg_val])
     }
 
+    /// Gets the input current limit
     pub fn get_input_current_limit(&mut self) -> Result<u16, PmuSensorError> {
         let reg_val = self.dev.read_register(0x00)?;
         let current_bits = reg_val & 0x3F;
@@ -160,6 +175,9 @@ where
     // Input Voltage Limit Offset
 
     /// Sets the boost mode hot temperature monitor threshold
+    ///
+    /// # Arguments
+    /// * `threshold` - Boost hot temperature threshold
     pub fn set_boost_mode_hot_temp_threshold(
         &mut self,
         threshold: BoostHotThreshold,
@@ -170,6 +188,9 @@ where
     }
 
     /// Sets the boost mode cold temperature monitor threshold
+    ///
+    /// # Arguments
+    /// * `threshold` - Boost cold temperature threshold
     pub fn set_boost_mode_cold_temp_threshold(
         &mut self,
         threshold: BoostColdThreshold,
@@ -186,6 +207,9 @@ where
     /// Maximum VINDPM threshold is clamped at 15.3V
     /// When VBUS at noLoad is ≤ 6V, the VINDPM_OS is used to calculate VINDPM threshold
     /// When VBUS at noLoad is > 6V, the VINDPM_OS multiple by 2 is used to calculate VINDPM threshold.
+    ///
+    /// # Arguments
+    /// * `millivolt` - Voltage limit offset in mV
     pub fn set_input_voltage_limit_offset(
         &mut self,
         mut millivolt: u16,
@@ -217,14 +241,17 @@ where
         self.dev.write_register(&[0x02, data])
     }
 
-    // Disables ADC conversion
+    /// Disables ADC conversion
     pub fn set_adc_disabled(&mut self) -> Result<(), PmuSensorError> {
         let mut data = self.dev.read_register(0x02)?;
         data &= !(1 << 7); // Clear ADC conversion bit
         self.dev.write_register(&[0x02, data])
     }
 
-    // Set boost frequency
+    /// Sets the boost frequency
+    ///
+    /// # Arguments
+    /// * `freq` - Boost frequency
     pub fn set_boost_freq(&mut self, freq: BoostFreq) -> Result<(), PmuSensorError> {
         match freq {
             BoostFreq::Freq500KHz => self.dev.set_register_bit(0x02, 5),
@@ -232,7 +259,7 @@ where
         }
     }
 
-    // Get boost frequency
+    /// Gets the boost frequency
     pub fn get_boost_freq(&mut self) -> Result<BoostFreq, PmuSensorError> {
         let bit = self.dev.get_register_bit(0x02, 5)?;
         Ok(if bit {
@@ -242,37 +269,42 @@ where
         })
     }
 
-    // Input Current Optimizer controls
+    /// Enables the input current optimizer
     pub fn enable_input_current_optimizer(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x02, 4)
     }
 
+    /// Disables the input current optimizer
     pub fn disable_input_current_optimizer(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x02, 4)
     }
 
-    // Input Detection controls
+    /// Enables input detection
     pub fn enable_input_detection(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x02, 1)
     }
 
+    /// Disables input detection
     pub fn disable_input_detection(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x02, 1)
     }
 
+    /// Checks if input detection is enabled
     pub fn is_input_detection_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x02, 1)
     }
 
-    // Automatic Input Detection controls
+    /// Enables automatic input detection
     pub fn enable_automatic_input_detection(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x02, 0)
     }
 
+    /// Disables automatic input detection
     pub fn disable_automatic_input_detection(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x02, 0)
     }
 
+    /// Checks if automatic input detection is enabled
     pub fn is_automatic_input_detection_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x02, 0)
     }
@@ -281,26 +313,32 @@ where
     // Battery Load (IBATLOAD) Enable, I2C Watchdog Timer Reset, Boost (OTG) Mode Configuration
     // Charge Enable Configuration,  Minimum System Voltage Limit, Minimum Battery Voltage (falling) to exit boost mode
 
+    /// Checks if battery load is enabled
     pub fn is_bat_load_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x03, 7)
     }
 
+    /// Disables battery load
     pub fn disable_bat_load(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x03, 7)
     }
 
+    /// Enables battery load
     pub fn enable_bat_load(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x03, 7)
     }
 
+    /// Feeds the watchdog timer
     pub fn feed_watchdog(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x03, 6)
     }
 
+    /// Checks if OTG mode is enabled
     pub fn is_otg_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x03, 5)
     }
 
+    /// Disables OTG mode
     pub fn disable_otg(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x03, 5)?;
         // Re-enable charging if it wasn't explicitly disabled by user
@@ -310,6 +348,7 @@ where
         Ok(())
     }
 
+    /// Enables OTG mode
     pub fn enable_otg(&mut self) -> Result<bool, PmuSensorError> {
         if self.is_vbus_in()? {
             return Ok(false);
@@ -330,11 +369,15 @@ where
         self.dev.clear_register_bit(0x03, 4)
     }
 
-    /// Get charging status
+    /// Checks if charging is enabled
     pub fn is_charge_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x03, 4)
     }
 
+    /// Sets the system power down voltage
+    ///
+    /// # Arguments
+    /// * `millivolt` - Power down voltage in mV
     pub fn set_sys_power_down_voltage(&mut self, millivolt: u16) -> Result<(), PmuSensorError> {
         if millivolt % SYS_VOL_STEPS != 0 {
             return Err(PmuSensorError::VoltageStepInvalid100);
@@ -350,12 +393,17 @@ where
         self.dev.write_register(&[0x03, val])
     }
 
+    /// Gets the system power down voltage
     pub fn get_sys_power_down_voltage(&mut self) -> Result<u16, PmuSensorError> {
         let val = self.dev.read_register(0x03)?;
         let val = (val & 0x0E) >> 1;
         Ok((val as u16 * SYS_VOL_STEPS) + SYS_VOFF_VOL_MIN)
     }
 
+    /// Sets the exit boost mode voltage
+    ///
+    /// # Arguments
+    /// * `voltage` - Exit boost mode voltage
     pub fn set_exit_boost_mode_voltage(
         &mut self,
         voltage: ExitBoostModeVolt,
@@ -369,15 +417,20 @@ where
     // REGISTER 0x04
     // Current pulse control Enable, Fast Charge Current Limit
 
+    /// Enables current pulse control
     pub fn set_current_pulse_control_enabled(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x04, 7)
     }
 
+    /// Disables current pulse control
     pub fn set_current_pulse_control_disabled(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x04, 7)
     }
 
-    /// Sets the charger constant current
+    /// Sets the fast charge current limit
+    ///
+    /// # Arguments
+    /// * `milliampere` - Fast charge current limit in mA
     pub fn set_fast_charge_current_limit(
         &mut self,
         milliampere: u16,
@@ -403,7 +456,7 @@ where
         self.dev.write_register(&[0x04, val])
     }
 
-    /// Gets the charger constant current
+    /// Gets the fast charge current limit
     pub fn get_fast_charge_current_limit(&mut self) -> Result<u16, PmuSensorError> {
         let val = self.dev.read_register(0x04)?;
         let bits = val & 0x7F; // Extract bits 6:0
@@ -415,6 +468,9 @@ where
     // Precharge Current Limit, Termination Current Limit
 
     /// Sets the precharge current
+    ///
+    /// # Arguments
+    /// * `milliampere` - Precharge current in mA
     pub fn set_precharge_current(&mut self, milliampere: u16) -> Result<(), PmuSensorError> {
         // Validate step size
         if milliampere % PRE_CHG_CUR_STEP != 0 {
@@ -446,6 +502,10 @@ where
         Ok(PRE_CHG_CUR_STEP + (bits as u16 * PRE_CHG_CUR_STEP))
     }
 
+    /// Sets the termination current
+    ///
+    /// # Arguments
+    /// * `milliampere` - Termination current in mA
     pub fn set_termination_current(&mut self, milliampere: u16) -> Result<(), PmuSensorError> {
         // Validate step size
         if milliampere % TERM_CHG_CUR_STEP != 0 {
@@ -480,6 +540,9 @@ where
     // Charge Voltage Limit, Battery Precharge to Fast Charge Threshold, Battery Recharge Threshold Offset
 
     /// Sets the charge target voltage
+    ///
+    /// # Arguments
+    /// * `target_voltage` - Charge target voltage in mV
     pub fn set_charge_target_voltage(&mut self, target_voltage: u16) -> Result<(), PmuSensorError> {
         // Check if voltage is multiple of step size
         if target_voltage % CHG_VOL_STEP != 0 {
@@ -514,7 +577,10 @@ where
         Ok(CHG_VOL_BASE + (bits as u16 * CHG_VOL_STEP))
     }
 
-    /// Sets the battery precharge to fast charge threshold
+    /// Sets the fast charge threshold
+    ///
+    /// # Arguments
+    /// * `threshold` - Fast charge threshold
     pub fn set_fast_charge_threshold(
         &mut self,
         threshold: FastChargeThreshold,
@@ -526,6 +592,9 @@ where
     }
 
     /// Sets the battery recharge threshold offset
+    ///
+    /// # Arguments
+    /// * `offset` - Recharge threshold offset
     pub fn set_battery_recharge_threshold_offset(
         &mut self,
         offset: RechargeThresholdOffset,
@@ -540,36 +609,47 @@ where
     // Charging Termination Enable, STAT Pin Disable , I2C Watchdog Timer Setting, Charging Safety Timer Enable
     // Fast Charge Timer Setting, JEITA Low Temperature Current Setting
 
+    /// Enables charging termination
     pub fn enable_charging_termination(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x07, 7)
     }
 
+    /// Disables charging termination
     pub fn disable_charging_termination(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x07, 7)
     }
 
+    /// Checks if charging termination is enabled
     pub fn is_charging_termination_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x07, 7)
     }
 
+    /// Disables the STAT pin
     pub fn disable_stat_pin(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x07, 6)
     }
 
+    /// Enables the STAT pin
     pub fn enable_stat_pin(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x07, 6)
     }
 
+    /// Checks if the STAT pin is enabled
     pub fn is_stat_pin_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x07, 6)
     }
 
+    /// Disables the watchdog timer
     pub fn disable_watchdog(&mut self) -> Result<(), PmuSensorError> {
         let mut val = self.dev.read_register(0x07)?;
         val &= 0xCF;
         self.dev.write_register(&[0x07, val])
     }
 
+    /// Enables the watchdog timer
+    ///
+    /// # Arguments
+    /// * `config` - Watchdog timer configuration
     pub fn enable_watchdog(&mut self, config: WatchdogConfig) -> Result<(), PmuSensorError> {
         let mut val = self.dev.read_register(0x07)?;
         val &= 0xCF;
@@ -581,18 +661,25 @@ where
         self.dev.write_register(&[0x07, val | bits])
     }
 
+    /// Disables the charging safety timer
     pub fn disable_charging_safety_timer(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x07, 3)
     }
 
+    /// Enables the charging safety timer
     pub fn enable_charging_safety_timer(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x07, 3)
     }
 
+    /// Checks if the charging safety timer is enabled
     pub fn is_charging_safety_timer_enabled(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x07, 3)
     }
 
+    /// Sets the fast charge timer
+    ///
+    /// # Arguments
+    /// * `timer` - Fast charge timer
     pub fn set_fast_charge_timer(&mut self, timer: FastChargeTimer) -> Result<(), PmuSensorError> {
         let mut val = self.dev.read_register(0x07)?;
         val &= 0xF1;
@@ -600,6 +687,7 @@ where
         self.dev.write_register(&[0x07, val])
     }
 
+    /// Gets the fast charge timer
     pub fn get_fast_charge_timer(&mut self) -> Result<FastChargeTimer, PmuSensorError> {
         let val = self.dev.read_register(0x07)?;
         let timer_val = (val & 0x0E) >> 1;
@@ -611,6 +699,10 @@ where
         })
     }
 
+    /// Sets the JEITA low temperature current
+    ///
+    /// # Arguments
+    /// * `current` - JEITA low temperature current
     pub fn set_jeita_low_temperature_current(
         &mut self,
         current: JeitaLowTemperatureCurrent,
@@ -624,6 +716,10 @@ where
     // REGISTER 0x08
     // IR Compensation Resistor Setting, IR Compensation Voltage Clamp, Thermal Regulation Threshold
 
+    /// Sets the IR compensation resistor
+    ///
+    /// # Arguments
+    /// * `milliohm` - IR compensation resistor in mOhm
     pub fn set_ir_compensation_resistor(&mut self, milliohm: u16) -> Result<(), PmuSensorError> {
         if milliohm % BAT_COMP_STEPS != 0 {
             return Err(PmuSensorError::ResistanceStepInvalid20);
@@ -636,6 +732,10 @@ where
         self.dev.write_register(&[0x08, val])
     }
 
+    /// Sets the IR compensation voltage clamp
+    ///
+    /// # Arguments
+    /// * `millivolt` - IR compensation voltage clamp in mV
     pub fn set_ir_compensation_voltage_clamp(
         &mut self,
         millivolt: u16,
@@ -651,6 +751,10 @@ where
         self.dev.write_register(&[0x08, val])
     }
 
+    /// Sets the thermal regulation threshold
+    ///
+    /// # Arguments
+    /// * `threshold` - Thermal regulation threshold
     pub fn set_thermal_regulation_threshold(
         &mut self,
         threshold: ThermalRegThreshold,
@@ -666,13 +770,14 @@ where
     // JEITA High Temperature Voltage Setting, BATFET turn off delay control, BATFET full system reset enable, Current pulse control voltage up enable
     // Current pulse control voltage down enable
 
-    /// Force start Input Current Optimizer (ICO)
-    /// Note: This bit can only be set and always returns to 0 after ICO starts
+    /// Forces the start of the input current optimizer (ICO)
     pub fn force_input_current_optimizer(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x09, 7)
     }
 
-    /// Configure safety timer behavior during DPM or thermal regulation
+    /// Sets the safety timer behavior during DPM or thermal regulation
+    ///
+    /// # Arguments
     /// * `slow_down` - If true, safety timer is slowed by 2X during input DPM/thermal regulation (default)
     pub fn set_safety_timer_thermal_regulation(
         &mut self,
@@ -685,23 +790,24 @@ where
         }
     }
 
-    /// Disables the battery power path (shutdown)
-    /// Note: Only works when on battery power, not when USB is connected
+    /// Shuts down the device
     pub fn shutdown(&mut self) -> Result<(), PmuSensorError> {
         self.disable_battery_power_path()
     }
 
-    /// Disable battery power path
+    /// Disables the battery power path
     pub fn disable_battery_power_path(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x09, 5)
     }
 
-    /// Enable battery power path
+    /// Enables the battery power path
     pub fn enable_battery_power_path(&mut self) -> Result<(), PmuSensorError> {
         self.dev.clear_register_bit(0x09, 5)
     }
 
-    /// Configure JEITA high temperature voltage setting
+    /// Sets the JEITA high temperature voltage
+    ///
+    /// # Arguments
     /// * `use_vreg` - If true, use VREG instead of VREG-200mV during JEITA high temperature
     pub fn set_jeita_high_temp_voltage(&mut self, use_vreg: bool) -> Result<(), PmuSensorError> {
         if use_vreg {
@@ -711,7 +817,9 @@ where
         }
     }
 
-    /// Configure BATFET turn off delay
+    /// Sets the BATFET turn off delay
+    ///
+    /// # Arguments
     /// * `delay` - If true, BATFET turns off with tSM_DLY delay when BATFET_DIS is set
     pub fn set_batfet_turnoff_delay(&mut self, delay: bool) -> Result<(), PmuSensorError> {
         if delay {
@@ -721,7 +829,10 @@ where
         }
     }
 
-    /// Enable/disable BATFET full system reset
+    /// Enables or disables the BATFET full system reset
+    ///
+    /// # Arguments
+    /// * `enable` - If true, enables full system reset
     pub fn set_full_system_reset(&mut self, enable: bool) -> Result<(), PmuSensorError> {
         if enable {
             self.dev.set_register_bit(0x09, 2)
@@ -730,8 +841,10 @@ where
         }
     }
 
-    /// Enable/disable current pulse control voltage up
-    /// Note: Can only be set when EN_PUMPX is set
+    /// Enables or disables the current pulse control voltage up
+    ///
+    /// # Arguments
+    /// * `enable` - If true, enables current pulse control voltage up
     pub fn set_current_pulse_voltage_up(&mut self, enable: bool) -> Result<(), PmuSensorError> {
         if enable {
             self.dev.set_register_bit(0x09, 1)
@@ -740,8 +853,10 @@ where
         }
     }
 
-    /// Enable/disable current pulse control voltage down
-    /// Note: Can only be set when EN_PUMPX is set
+    /// Enables or disables the current pulse control voltage down
+    ///
+    /// # Arguments
+    /// * `enable` - If true, enables current pulse control voltage down
     pub fn set_current_pulse_voltage_down(&mut self, enable: bool) -> Result<(), PmuSensorError> {
         if enable {
             self.dev.set_register_bit(0x09, 0)
@@ -753,8 +868,10 @@ where
     // REGISTER 0x0A
     // Boost Mode Voltage Regulation, PFM mode allowed in boost mode , Boost Mode Current Limit
 
-    /// Set boost mode voltage regulation (4550mV ~ 5510mV)
-    /// Returns error if voltage is not aligned to 64mV steps
+    /// Sets the boost mode voltage regulation
+    ///
+    /// # Arguments
+    /// * `millivolt` - Boost mode voltage regulation in mV
     pub fn set_boost_voltage(&mut self, mut millivolt: u16) -> Result<(), PmuSensorError> {
         if millivolt % BOOST_VOL_STEP != 0 {
             return Err(PmuSensorError::VoltageStepInvalid64);
@@ -767,7 +884,10 @@ where
         self.dev.write_register(&[0x0A, new_val])
     }
 
-    /// Set boost mode current limit
+    /// Sets the boost mode current limit
+    ///
+    /// # Arguments
+    /// * `limit` - Boost mode current limit
     pub fn set_boost_current_limit(
         &mut self,
         limit: BoostCurrentLimit,
@@ -777,7 +897,9 @@ where
         self.dev.write_register(&[0x0A, new_val])
     }
 
-    /// Configure PFM mode in boost mode
+    /// Configures PFM mode in boost mode
+    ///
+    /// # Arguments
     /// * `enable` - If true, allow PFM in boost mode (default)
     pub fn set_boost_mode_pfm(&mut self, enable: bool) -> Result<(), PmuSensorError> {
         if enable {
@@ -833,19 +955,19 @@ where
     // REGISTER 0x0C TODO
     // Watchdog Fault Status, Boost Mode Fault Status, Charge Fault Status, Battery Fault Status, NTC Fault Status
 
-    /// Check watchdog fault status
+    /// Checks the watchdog fault status
     pub fn is_watchdog_fault(&mut self) -> Result<bool, PmuSensorError> {
         let val = self.dev.read_register(0x0C)?;
         Ok(((val >> 7) & 0x01) != 0)
     }
 
-    /// Check boost mode fault status
+    /// Checks the boost mode fault status
     pub fn is_boost_fault(&mut self) -> Result<bool, PmuSensorError> {
         let val = self.dev.read_register(0x0C)?;
         Ok(((val >> 6) & 0x01) != 0)
     }
 
-    /// Get charge fault status
+    /// Gets the charge fault status
     pub fn get_charge_fault(&mut self) -> Result<ChargeFaultStatus, PmuSensorError> {
         let val = self.dev.read_register(0x0C)?;
         let fault = (val >> 4) & 0x03;
@@ -858,19 +980,19 @@ where
         })
     }
 
-    /// Check battery fault status
+    /// Checks the battery fault status
     pub fn is_battery_fault(&mut self) -> Result<bool, PmuSensorError> {
         let val = self.dev.read_register(0x0C)?;
         Ok(((val >> 3) & 0x01) != 0)
     }
 
-    /// Check NTC fault status
+    /// Checks the NTC fault status
     pub fn is_ntc_fault(&mut self) -> Result<bool, PmuSensorError> {
         let val = self.dev.read_register(0x0C)?;
         Ok((val & 0x07) != 0)
     }
 
-    /// Get NTC status as human readable string
+    /// Gets the NTC status as a human-readable string
     pub fn get_ntc_status_string(&mut self) -> Result<&'static str, PmuSensorError> {
         let status = self.dev.read_register(0x0C)? & 0x07;
 
@@ -899,7 +1021,9 @@ where
     // REGISTER 0x0D
     // VINDPM Threshold Setting Method, bsolute VINDPM Threshold
 
-    /// Set VINDPM threshold setting method
+    /// Sets the VINDPM threshold setting method
+    ///
+    /// # Arguments
     /// * `relative` - true for relative (default), false for absolute
     pub fn set_vindpm_threshold_method(&mut self, relative: bool) -> Result<(), PmuSensorError> {
         if relative {
@@ -909,7 +1033,9 @@ where
         }
     }
 
-    /// Set absolute VINDPM threshold voltage
+    /// Sets the absolute VINDPM threshold voltage
+    ///
+    /// # Arguments
     /// * `millivolt` - Voltage in mV (2600-15300mV in 100mV steps)
     pub fn set_vindpm_threshold(&mut self, mut millivolt: u16) -> Result<(), PmuSensorError> {
         if millivolt % VINDPM_VOL_STEPS != 0 {
@@ -926,13 +1052,13 @@ where
     // REGISTER 0x0E
     // ADC conversion of Battery Voltage (VBAT)
 
-    /// Check if thermal regulation is normal
+    /// Checks if thermal regulation is normal
     /// Returns true for normal operation, false if in thermal regulation
     pub fn is_thermal_regulation_normal(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x0E, 7).map(|b| !b)
     }
 
-    /// Gets battery voltage in millivolts
+    /// Gets the battery voltage in millivolts
     pub fn get_battery_voltage(&mut self) -> Result<u16, PmuSensorError> {
         let data: u8 = self.dev.read_register(0x0E)?;
         if data == 0 {
@@ -951,7 +1077,7 @@ where
     // REGISTER 0x0F
     // ADDC conversion of System Voltage (VSYS)
 
-    /// Gets system voltage in millivolts
+    /// Gets the system voltage in millivolts
     pub fn get_sys_voltage(&mut self) -> Result<u16, PmuSensorError> {
         let data = self.dev.read_register(0x0F)?;
         let data = data & 0x7F;
@@ -966,7 +1092,7 @@ where
     // REGISTER 0x10
     // ADC conversion of TS Voltage (TS) as percentage of REGN
 
-    /// Gets battery temperature in Celsius from NTC thermistor
+    /// Gets the battery temperature in Celsius from the NTC thermistor
     pub fn get_temperature(&mut self) -> Result<f64, PmuSensorError> {
         let data = self.dev.read_register(0x10)?;
         let data = data & 0x7F;
@@ -999,7 +1125,7 @@ where
     // REGISTER 0x11
     // ADC conversion of VBUS voltage (VBUS) , VBUS Good Status
 
-    /// Gets USB bus voltage in millivolts
+    /// Gets the USB bus voltage in millivolts
     pub fn get_vbus_voltage(&mut self) -> Result<u16, PmuSensorError> {
         let data = self.dev.read_register(0x11)?;
 
@@ -1016,8 +1142,8 @@ where
     // REGISTER 0x12
     // ADC conversion of Charge Current (IBAT) when VBAT > VBATSHORT
 
-    /// Gets charge current in mA when VBAT > VBATSHORT
-    /// Note: If charger is disconnected, register retains last value
+    /// Gets the charge current in mA when VBAT > VBATSHORT
+    /// Note: If the charger is disconnected, the register retains the last value
     pub fn get_charge_current(&mut self) -> Result<u16, PmuSensorError> {
         // Return 0 if not charging
         if self.get_charge_status()? == ChargeStatus::NoCharge {
@@ -1038,17 +1164,20 @@ where
     // REGISTER 0x13
     // VINDPM Status, IINDPM Status, Input Current Limit in effect while Input Current Optimizer
 
-    /// Check if Dynamic Power Management is active
+    /// Checks if Dynamic Power Management is active
     pub fn is_dynamic_power_management(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x13, 7)
     }
 
-    /// Check if Input Current Limit is active
+    /// Checks if Input Current Limit is active
     pub fn is_input_current_limit(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x13, 6)
     }
 
-    /// Set Input Current Limit for optimizer (100-3250mA)
+    /// Sets the Input Current Limit for the optimizer (100-3250mA)
+    ///
+    /// # Arguments
+    /// * `milliampere` - Current limit in mA
     pub fn set_input_current_limit_optimizer(
         &mut self,
         mut milliampere: u16,
@@ -1067,17 +1196,17 @@ where
     // REGISTER 0x14
     // Register Reset, Input Current Optimizer (ICO) Status , Device Configuration, Temperature Profile, Device Revision: 10
 
-    /// Reset device to default configuration
+    /// Resets the device to the default configuration
     pub fn reset_default(&mut self) -> Result<(), PmuSensorError> {
         self.dev.set_register_bit(0x14, 7)
     }
 
-    /// Check if Input Current Optimization is in progress
+    /// Checks if Input Current Optimization is in progress
     pub fn is_input_current_optimizer(&mut self) -> Result<bool, PmuSensorError> {
         self.dev.get_register_bit(0x14, 6)
     }
 
-    /// Get device configuration
+    /// Gets the device configuration
     pub fn get_device_config(&mut self) -> Result<u8, PmuSensorError> {
         let val = self.dev.read_register(0x14)?;
         Ok((val >> 3) & 0x03)

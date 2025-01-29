@@ -9,3 +9,8 @@
   - Pre-charge
   - Constant current
   - Constant voltage
+
+
+### Generate documentation
+
+    cargo doc -p bq25896x --no-deps  --open
