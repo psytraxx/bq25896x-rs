@@ -1,3 +1,4 @@
+#![no_std]
 //! BQ25896 Battery Charging and Power Path Management Library
 //!
 //! This library provides an interface to the BQ25896 IC for battery charging
@@ -7,10 +8,12 @@
 /// BQ25896 battery charging and power path management IC driver.
 pub mod bq25896;
 
+extern crate alloc;
+
 #[cfg(test)]
 mod tests {
     use crate::bq25896::{BusStatus, ChargeStatus};
-
+    use alloc::format;
     #[test]
     fn test_bus_status_display() {
         assert_eq!(format!("{}", BusStatus::NoInput), "No input");

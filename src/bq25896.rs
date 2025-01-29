@@ -1,3 +1,4 @@
+use alloc::{format, string::String};
 use core::fmt::{self, Display, Formatter};
 use embedded_hal::i2c::I2c;
 use libm::{log, round};
